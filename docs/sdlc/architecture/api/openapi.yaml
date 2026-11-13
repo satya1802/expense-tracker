@@ -2,6 +2,473 @@
 openapi: 3.1.0
 info:
   title: Expense Tracker
-  version: architecture-v0
+  version: architecture-v1
   description: Designed API from the approved architecture (not extracted from code).
-paths: {}
+paths:
+  /alerts:
+    get:
+      summary: List current in-app near/over budget alerts for the user.
+      description: List current in-app near/over budget alerts for the user.
+      operationId: get_alerts
+      parameters: []
+      responses:
+        '200':
+          description: 200 [{category, kind, period_month}]; 401
+      security:
+      - bearerAuth: []
+  /auth/login:
+    post:
+      summary: Authenticate and return a session token in the body; generic failure
+        message on bad credentials.
+      description: Authenticate and return a session token in the body; generic failure
+        message on bad credentials.
+      operationId: post_auth_login
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: '{email, password}'
+      responses:
+        '200':
+          description: 200 {token, user}; 401 generic failure
+  /auth/logout:
+    post:
+      summary: Revoke the current session token on the server.
+      description: Revoke the current session token on the server.
+      operationId: post_auth_logout
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: none (Bearer token)
+      responses:
+        '200':
+          description: '204'
+      security:
+      - bearerAuth: []
+  /auth/signup:
+    post:
+      summary: Create account with email and password, seed default categories and
+        default currency, return a session token.
+      description: Create account with email and password, seed default categories
+        and default currency, return a session token.
+      operationId: post_auth_signup
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: '{email, password}'
+      responses:
+        '200':
+          description: '201 {token, user: {id, email, currency}}; 409 email in use;
+            422 validation'
+  /budgets:
+    get:
+      summary: List per-category monthly budgets with spent, limit and remaining for
+        the current month.
+      description: List per-category monthly budgets with spent, limit and remaining
+        for the current month.
+      operationId: get_budgets
+      parameters: []
+      responses:
+        '200':
+          description: 200 [{category, monthly_limit, spent, remaining}]; 401
+      security:
+      - bearerAuth: []
+  /budgets/{category_id}:
+    put:
+      summary: Set or update a positive monthly limit for a category.
+      description: Set or update a positive monthly limit for a category.
+      operationId: put_budgets_category_id
+      parameters:
+      - name: category_id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: '{monthly_limit}'
+      responses:
+        '200':
+          description: 200 {budget}; 422
+      security:
+      - bearerAuth: []
+  /categories:
+    get:
+      summary: List the user's categories (defaults plus custom).
+      description: List the user's categories (defaults plus custom).
+      operationId: get_categories
+      parameters: []
+      responses:
+        '200':
+          description: 200 [{id, name, is_default}]; 401
+      security:
+      - bearerAuth: []
+    post:
+      summary: Add a custom category with a non-empty, non-duplicate name.
+      description: Add a custom category with a non-empty, non-duplicate name.
+      operationId: post_categories
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: '{name}'
+      responses:
+        '200':
+          description: 201 {category}; 409 duplicate; 422
+      security:
+      - bearerAuth: []
+  /categories/{id}:
+    patch:
+      summary: Rename a category; new name reflected everywhere it appears.
+      description: Rename a category; new name reflected everywhere it appears.
+      operationId: patch_categories_id
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: '{name}'
+      responses:
+        '200':
+          description: 200 {category}; 404; 409; 422
+      security:
+      - bearerAuth: []
+  /expenses:
+    get:
+      summary: List the user's expenses, most recent first, with amount, category,
+        date and note.
+      description: List the user's expenses, most recent first, with amount, category,
+        date and note.
+      operationId: get_expenses
+      parameters: []
+      responses:
+        '200':
+          description: 200 [{id, amount, currency, category, spent_on, note}]; 401
+      security:
+      - bearerAuth: []
+    post:
+      summary: Log an expense with positive amount, category, date and optional note;
+        returns updated budget status.
+      description: Log an expense with positive amount, category, date and optional
+        note; returns updated budget status.
+      operationId: post_expenses
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: '{amount, category_id, spent_on, note?}'
+      responses:
+        '200':
+          description: 201 {expense, budget_status}; 422
+      security:
+      - bearerAuth: []
+  /expenses/export:
+    get:
+      summary: Export the user's expenses as CSV (amount, category, date, note); headers-only
+        CSV when empty.
+      description: Export the user's expenses as CSV (amount, category, date, note);
+        headers-only CSV when empty.
+      operationId: get_expenses_export
+      parameters: []
+      responses:
+        '200':
+          description: 200 text/csv attachment
+      security:
+      - bearerAuth: []
+  /expenses/{id}:
+    patch:
+      summary: Edit an expense; changes reflected in list, budgets and reports.
+      description: Edit an expense; changes reflected in list, budgets and reports.
+      operationId: patch_expenses_id
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: '{amount?, category_id?, spent_on?, note?}'
+      responses:
+        '200':
+          description: 200 {expense}; 404; 422
+      security:
+      - bearerAuth: []
+    delete:
+      summary: Delete an expense after confirmation so it no longer counts toward
+        budgets or reports.
+      description: Delete an expense after confirmation so it no longer counts toward
+        budgets or reports.
+      operationId: delete_expenses_id
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 204; 404
+      security:
+      - bearerAuth: []
+  /me:
+    get:
+      summary: Return the current user's profile and currency.
+      description: Return the current user's profile and currency.
+      operationId: get_me
+      parameters: []
+      responses:
+        '200':
+          description: 200 {id, email, currency, email_alerts_opt_in}; 401
+      security:
+      - bearerAuth: []
+    patch:
+      summary: Update account currency and email-alert opt-in.
+      description: Update account currency and email-alert opt-in.
+      operationId: patch_me
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: '{currency?, email_alerts_opt_in?}'
+      responses:
+        '200':
+          description: 200 {user}; 422
+      security:
+      - bearerAuth: []
+    delete:
+      summary: Permanently delete the account and all owned data and revoke sessions
+        (GDPR erasure).
+      description: Permanently delete the account and all owned data and revoke sessions
+        (GDPR erasure).
+      operationId: delete_me
+      parameters: []
+      responses:
+        '200':
+          description: '204'
+      security:
+      - bearerAuth: []
+  /reports/breakdown:
+    get:
+      summary: Total spent per category for a period (category breakdown report).
+      description: Total spent per category for a period (category breakdown report).
+      operationId: get_reports_breakdown
+      parameters: []
+      responses:
+        '200':
+          description: 200 [{category, total}]; 401
+      security:
+      - bearerAuth: []
+  /reports/dashboard:
+    get:
+      summary: Current-month spending summary and budget status for the dashboard.
+      description: Current-month spending summary and budget status for the dashboard.
+      operationId: get_reports_dashboard
+      parameters: []
+      responses:
+        '200':
+          description: '200 {month, total_spent, currency, budgets: [...], empty:
+            bool}; 401'
+      security:
+      - bearerAuth: []
+  /reports/trends:
+    get:
+      summary: Total spending per time period over time (spending-trends report).
+      description: Total spending per time period over time (spending-trends report).
+      operationId: get_reports_trends
+      parameters: []
+      responses:
+        '200':
+          description: 200 [{period, total}]; 401
+      security:
+      - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    users:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        password_hash:
+          type: string
+        currency:
+          type: string
+        email_alerts_opt_in:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - email
+      - password_hash
+      - currency
+      - email_alerts_opt_in
+      - created_at
+    sessions:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        token_hash:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - user_id
+      - token_hash
+      - created_at
+      - expires_at
+    categories:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        is_default:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - user_id
+      - name
+      - is_default
+      - created_at
+    expenses:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        currency:
+          type: string
+        spent_on:
+          type: string
+          format: date
+        note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - user_id
+      - category_id
+      - amount
+      - currency
+      - spent_on
+      - created_at
+    budgets:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+        monthly_limit:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - user_id
+      - category_id
+      - monthly_limit
+      - created_at
+      - updated_at
+    budget_alerts:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+        period_month:
+          type: string
+          format: date
+        kind:
+          type: string
+        emailed:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - user_id
+      - category_id
+      - period_month
+      - kind
+      - emailed
+      - created_at

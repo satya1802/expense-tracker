@@ -7,7 +7,13 @@ Pushes to `main` run `.github/workflows/deploy.yml`, which builds the API image 
 <!-- sdlc:auto:end how-it-deploys -->
 
 <!-- sdlc:auto:start environments -->
-_No environments recorded._
+| Name | Service | Runtime | Scaling | Environment |
+|---|---|---|---|---|
+| SPA Static Hosting | React build on S3 + CloudFront (SPA origin) | Static assets | CDN-backed, auto | dev |
+| API Service | FastAPI on AWS (ECS Fargate or App Runner), separate origin | Python 3.12 / Uvicorn | 1 task, scalable | dev |
+| PostgreSQL | Amazon RDS for PostgreSQL 16 | PostgreSQL 16 | Single instance, encrypted storage, automated backups | dev |
+| Budget Scheduler | Amazon EventBridge Scheduler triggering the budget-check task | Python 3.12 (same backend image) | On schedule | dev |
+| SendGrid | SendGrid transactional email API | External SaaS | Managed by provider | dev |
 <!-- sdlc:auto:end environments -->
 
 <!-- sdlc:auto:start live -->
@@ -15,5 +21,17 @@ _Not deployed yet._
 <!-- sdlc:auto:end live -->
 
 <!-- sdlc:auto:start topology -->
-_No deployment topology recorded._
+```mermaid
+graph LR
+  n_SPA_Static_Hosting["SPA Static Hosting<br/>React build on S3 + CloudFront (SPA origin)"]
+  n_API_Service["API Service<br/>FastAPI on AWS (ECS Fargate or App Runner), separate origin"]
+  n_PostgreSQL["PostgreSQL<br/>Amazon RDS for PostgreSQL 16"]
+  n_Budget_Scheduler["Budget Scheduler<br/>Amazon EventBridge Scheduler triggering the budget-check task"]
+  n_SendGrid["SendGrid<br/>SendGrid transactional email API"]
+  n_SPA_Static_Hosting -->|"HTTPS"| n_API_Service
+  n_API_Service -->|"TLS/5432"| n_PostgreSQL
+  n_Budget_Scheduler -->|"TLS/5432"| n_PostgreSQL
+  n_API_Service -->|"HTTPS"| n_SendGrid
+  n_Budget_Scheduler -->|"HTTPS"| n_SendGrid
+```
 <!-- sdlc:auto:end topology -->
